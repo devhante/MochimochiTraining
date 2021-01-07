@@ -30,7 +30,7 @@
             [class^=answer]:hover {border-color:transparent; background:rgba(255,255,255,.3)}
             .cover {position:absolute; left:0px; top:0px; height:800px; width:800px; box-sizing:border-box; text-align:center; line-height:380px; font-size:48px; color:#FFF; border:10px solid rgba(255,255,255,.5); overflow:hidden; border-radius:50%; margin:0;}
             .dd {color:#FFF; padding:10px; font-size:20px; font-weight:bold; line-height:24px;}
-            .top {position:fixed; left:0px; top:0px; right:0px; height:64px; background:#FFF;}
+            .top {display: flex; position:fixed; left:0px; top:0px; right:0px; height:64px; background:#FFF;}
             .bottom {position:fixed; left:0px; bottom:0px; right:0px; height:64px; background:#FFF;}
             .bottom>.cc {display:flex;}
             .bottom>.cc>div {flex-grow:1; width:50%; color:#000; text-align:center;}
@@ -39,6 +39,18 @@
             .playbtn {background:url(./images/volume_off-24px.svg); background-position:center center; width:64px; height:64px; background-size:48px; background-repeat:no-repeat; fill:#05A;}
             .playbtn:hover {background-color:rgba(0,0,0,.25);}
             .playbtn:action {background-color:rgba(0,0,0,.1);}
+
+            .startbtn {background:url(./images/play.svg); background-position:center center; width:64px; height:64px; background-size:36px; background-repeat:no-repeat; fill:#05A;}
+            .startbtn:hover {background-color:rgba(0,0,0,.25);}
+            .startbtn:action {background-color:rgba(0,0,0,.1);}
+
+            .castingwrap {position:absolute; min-width:200px; top:80px; left:20px;}
+            .casting {display:none; margin-bottom:8px;}
+            .castingbar {height:8px; border:1px solid orange; box-shadow:0 0 2px orange; border-radius:2px; background-color:#000;}
+            .castingfill {height:8px; background-color: #f1f4d8; width:0%;}
+            .castingtext {margin-top:-8px; text-align:right; font-weight:700; color: #FFF; text-shadow:0 0 2px #d17708;}
+
+            .hit {background-color: rgba(255, 0, 0, .5) !important;}
     
             @keyframes rinfloat
             {
@@ -59,6 +71,35 @@
                 0% {filter:brightness(1.05) drop-shadow(0px 0px 3px #0FF);}
                 50% {filter:brightness(1.15) drop-shadow(0px 0px 20px #0FF);}
                 100% {filter:brightness(1.05) drop-shadow(0px 0px 3px #0FF);}
+            }
+
+            @keyframes casting {
+                from {width:0%;}
+                to {width:100%;}
+            }
+
+            @keyframes mirrorfadein
+            {
+                from {opacity:0;}
+                to {opacity:0.5;}
+            }
+
+            @keyframes mirrorfadeout
+            {
+                from {opacity:0.5;}
+                to {opacity:0;}
+            }
+
+            @keyframes fadein
+            {
+                from {opacity:0;}
+                to {opacity:1;}
+            }
+
+            @keyframes fadeout
+            {
+                from {opacity:1;}
+                to {opacity:0;}
             }
 
             @media screen and (max-height:900px), screen and (max-width:900px)
@@ -84,9 +125,9 @@
                     <div class="answer3"></div>
                     <div class="answer4"></div>
                 </div>
-                <div class="mirrorA"></div>
-                <div class="mirrorFixed"></div>
-                <div class="mirrorB"></div>
+                <div class="m mirrorA"></div>
+                <div class="m mirrorFixed"></div>
+                <div class="m mirrorB"></div>
                 <div class="rin">
                     <div class="front">
                         <div class="rinhairimgb" style="transform:scaleX(-1); margin:0px;"></div>
@@ -108,25 +149,48 @@
                 <source src="./e8s.ogg" type="audio/ogg">
             </audio>
             <div class="playbtn" onclick="playbg();"></div>
+            <div class="startbtn" onclick="play_shivacasting_live();"></div>
+            <div class="castingwrap">
+                <div class="casting">
+                    <div class="castingbar">
+                        <div class="castingfill"></div>
+                    </div>
+                    <div class="castingtext"></div>
+                </div>
+                <div class="casting">
+                    <div class="castingbar">
+                        <div class="castingfill"></div>
+                    </div>
+                    <div class="castingtext"></div>
+                </div>
+                <div class="casting">
+                    <div class="castingbar">
+                        <div class="castingfill"></div>
+                    </div>
+                    <div class="castingtext"></div>
+                </div>
+            </div>
+            
         </div>
         <div class="bottom">
             <div class="dd ff">※ Tip: Boss heading front(North) - 1-3-3 / back - 1-1-3</div>
             <div class="dd cc">
-                <div>
+                <!-- <div>
                     SUCCESS <span class="o"></span>
                 </div>
                 <div>
                     YOU DIED <span class="x"></span>
-                </div>
+                </div> -->
             </div>
         </div>
     </body>
     <script>
-        var mirrorstate="A",
-        frontback="front",
-        lrwing="left",
-        o=0,
-        x=0,
+        let live = false;
+        let mirrorstate="A";
+        let frontback="front";
+        let lrwing="left";
+        let o=0;
+        let x=0;
         _ = function(e)
         { 
             let el = document.querySelectorAll(e);
@@ -160,14 +224,14 @@
         {
             if (!_('#ad').paused) play("./alarms/FFXIV_Limit_Break_Charged.mp3");
             o++;
-            shivacasting();
+            shivacasting_live();
         }
     
         function failed()
         {
             if (!_('#ad').paused) play("./alarms/FFXIV_Error.mp3");
             x++;
-            shivacasting();
+            shivacasting_live();
         }
     
         function play(src)
@@ -213,35 +277,331 @@
                     _(".rwingb").style.animationName = "wingflicker";
             }
         }
-        document.querySelector(".answer1").addEventListener("click", function()
+
+        function hit(mirrorstate, frontback, lrwing, seq)
         {
-            if ((lrwing == "right" && mirrorstate == "A" && frontback == "front") || (lrwing == "right" && mirrorstate == "B" && frontback == "back"))
-                success();
-            else
-                failed();
-        });
-        document.querySelector(".answer2").addEventListener("click", function()
+            const answer1 = document.getElementsByClassName("answer1")[0];
+            const answer2 = document.getElementsByClassName("answer2")[0];
+            const answer3 = document.getElementsByClassName("answer3")[0];
+            const answer4 = document.getElementsByClassName("answer4")[0];
+
+            if (seq === 1) {
+                if (lrwing === "left") {
+                    answer1.classList.add("hit");
+                    answer3.classList.add("hit");
+                } else {
+                    answer2.classList.add("hit");
+                    answer4.classList.add("hit");
+                }
+                if (mirrorstate === "A") {
+                    if (frontback === "front") {
+                        if (lrwing === "left") {
+                            answer1.classList.add("hit");
+                            answer2.classList.add("hit");
+                        } else {
+                            answer3.classList.add("hit");
+                            answer4.classList.add("hit");
+                        }
+                    } else {
+                        if (lrwing === "left") {
+                            answer3.classList.add("hit");
+                            answer4.classList.add("hit");
+                        } else {
+                            answer1.classList.add("hit");
+                            answer2.classList.add("hit");
+                        }
+                    }
+                } else {
+                    if (frontback === "front") {
+                        if (lrwing === "left") {
+                            answer3.classList.add("hit");
+                            answer4.classList.add("hit");
+                        } else {
+                            answer1.classList.add("hit");
+                            answer2.classList.add("hit");
+                        }
+                    } else {
+                        if (lrwing === "left") {
+                            answer1.classList.add("hit");
+                            answer2.classList.add("hit");
+                        } else {
+                            answer3.classList.add("hit");
+                            answer4.classList.add("hit");
+                        }
+                    }
+                }
+            } else if (seq === 2) {
+                if (frontback === "front") {
+                    if (lrwing === "left") {
+                        answer1.classList.add("hit");
+                        answer3.classList.add("hit");
+                    } else {
+                        answer2.classList.add("hit");
+                        answer4.classList.add("hit");
+                    }
+                } else {
+                    if (lrwing === "left") {
+                        answer2.classList.add("hit");
+                        answer4.classList.add("hit");
+                    } else {
+                        answer1.classList.add("hit");
+                        answer3.classList.add("hit");
+                    }
+                }
+            } else if (seq === 3) {
+                if (lrwing === "left") {
+                    answer2.classList.add("hit");
+                    answer4.classList.add("hit");
+                } else {
+                    answer1.classList.add("hit");
+                    answer3.classList.add("hit");
+                }
+                if (mirrorstate === "A") {
+                    if (frontback === "front") {
+                        if (lrwing === "left") {
+                            answer3.classList.add("hit");
+                            answer4.classList.add("hit");
+                        } else {
+                            answer1.classList.add("hit");
+                            answer2.classList.add("hit");
+                        }
+                    } else {
+                        if (lrwing === "left") {
+                            answer1.classList.add("hit");
+                            answer2.classList.add("hit");
+                        } else {
+                            answer3.classList.add("hit");
+                            answer4.classList.add("hit");
+                        }
+                    }
+                } else {
+                    if (frontback === "front") {
+                        if (lrwing === "left") {
+                            answer1.classList.add("hit");
+                            answer2.classList.add("hit");
+                        } else {
+                            answer3.classList.add("hit");
+                            answer4.classList.add("hit");
+                        }
+                    } else {
+                        if (lrwing === "left") {
+                            answer3.classList.add("hit");
+                            answer4.classList.add("hit");
+                        } else {
+                            answer1.classList.add("hit");
+                            answer2.classList.add("hit");
+                        }
+                    }
+                }
+            }
+            setTimeout(function() {
+                answer1.classList.remove("hit");
+                answer2.classList.remove("hit");
+                answer3.classList.remove("hit");
+                answer4.classList.remove("hit");
+            }, 500);
+        }
+
+        function shivacasting_live()
         {
-            if ((lrwing == "left" && mirrorstate == "B" && frontback == "front") || (lrwing == "left" && mirrorstate == "A" && frontback == "back"))
-                success();
-            else
-                failed();
-        });
-        document.querySelector(".answer3").addEventListener("click", function()
+            live = true;
+            document.getElementsByClassName("startbtn")[0].style.backgroundImage = "url('./images/stop.svg')";
+
+            // init state
+            mirrorstate = "A";
+            frontback = "front";
+            lrwing = "left";
+    
+            document.querySelectorAll(".w").forEach(function(e){ e.setAttribute("style", ""); });
+    
+            if (Math.floor(Math.random() * 2) == 1) mirrorstate = "B";
+            if (Math.floor(Math.random() * 2) == 1) frontback = "back";
+            if (Math.floor(Math.random() * 2) == 1) lrwing = "right";
+
+            console.log(mirrorstate);
+            console.log(frontback);
+            console.log(lrwing);
+
+            _(".mirrorA").style.background = mirrorstate == "A" ? "#F00" : "#FFF";
+            _(".mirrorB").style.background = mirrorstate == "A" ? "#FFF" : "#F00";
+
+            // start
+            _(".front").style.display = "none";
+            _(".back").style.display = "block";
+            document.querySelectorAll(".m").forEach(function(e){ e.style.display = "none"; });
+
+            // Mirror, Mirror
+            setTimeout(function() {
+                const e1 = document.getElementsByClassName("casting")[0];
+                e1.style.display = "block";
+                const e2 = e1.getElementsByClassName("castingtext")[0];
+                e2.innerHTML = "Mirror, Mirror";
+                const e3 = e1.getElementsByClassName("castingfill")[0];
+                e3.style.animationName = "casting"
+                e3.style.animationDuration = "3s";
+                e3.style.animationTimingFunction = "linear";
+            }, 0);
+            // mirror appear
+            setTimeout(function() {
+                const e1 = document.getElementsByClassName("casting")[0];
+                e1.style.display = "none";
+                document.querySelectorAll(".m").forEach(function(e){ 
+                    e.style.display = "block";
+                    e.style.animationName = "mirrorfadein";
+                    e.style.animationDuration = "1s";
+                    // ease-out-cubic
+                    e.style.animationTimingFunction = "cubic-bezier(0.33, 1, 0.68, 1)";
+                });
+            }, 3000);
+            // rin disappear
+            setTimeout(function() {
+                const rin = document.getElementsByClassName("rin")[0];
+                rin.style.animationName = "fadeout";
+                rin.style.animationDuration = "0.1s";
+                rin.style.animationTimingFunction = "linear";
+                rin.style.animationIterationCount = 1;
+                rin.style.animationFillMode = "forwards";
+            }, 11300);
+            // rin appear
+            setTimeout(function() {
+                if (frontback === "front") {
+                    _(".front").style.display = "block";
+                    _(".back").style.display = "none";
+                }
+                const rin = document.getElementsByClassName("rin")[0];
+                rin.style.animationName = "fadein";
+                rin.style.animationDuration = "0.1s";
+                rin.style.animationTimingFunction = "linear";
+                rin.style.animationIterationCount = 1;
+                rin.style.animationFillMode = "forwards";
+            }, 11500);
+            // first Hallowed Wings
+            setTimeout(function() {
+                let wing;
+                if (frontback === "front") {
+                    wing = lrwing === "left" ? _(".lwing") : _(".rwing");
+                } else {
+                    wing = lrwing === "left" ? _(".lwingb") : _(".rwingb");
+                }
+                wing.style.animationName = "wingflicker";
+                const e1 = document.getElementsByClassName("casting")[0];
+                e1.style.display = "block";
+                const e2 = e1.getElementsByClassName("castingtext")[0];
+                e2.innerHTML = "Hallowed Wings";
+                const e3 = e1.getElementsByClassName("castingfill")[0];
+                e3.style.animationName = "casting";
+                e3.style.animationDuration = "5s";
+                e3.style.animationTimingFunction = "linear";
+            }, 12000);
+            // first Hallowed Wings hit
+            setTimeout(function() {
+                _(".lwing").style.animationName = "";
+                _(".rwing").style.animationName = "";
+                _(".lwingb").style.animationName = "";
+                _(".rwingb").style.animationName = "";
+                const e = document.getElementsByClassName("casting")[0];
+                e.style.display = "none";
+                hit(mirrorstate, frontback, lrwing, 1);
+            }, 17000);
+            // first Reflected Hallowed Wings
+            // second Reflected Hallowed Wings
+            setTimeout(function() {
+                const e1 = document.getElementsByClassName("casting")[1];
+                e1.style.display = "block";
+                const e1_1 = e1.getElementsByClassName("castingtext")[0];
+                e1_1.innerHTML = "Reflected Hallowed Wings";
+                const e1_2 = e1.getElementsByClassName("castingfill")[0];
+                e1_2.style.animationName = "casting";
+                e1_2.style.animationDuration = "5s";
+                e1_2.style.animationTimingFunction = "linear";
+                const e2 = document.getElementsByClassName("casting")[2];
+                e2.style.display = "block";
+                const e2_1 = e2.getElementsByClassName("castingtext")[0];
+                e2_1.innerHTML = "Reflected Hallowed Wings";
+                const e2_2 = e2.getElementsByClassName("castingfill")[0];
+                e2_2.style.animationName = "casting";
+                e2_2.style.animationDuration = "10s";
+                e2_2.style.animationTimingFunction = "linear";
+            }, 17500);
+            // first Reflected Hallowed Wings hit
+            // Hallowed Wings
+            setTimeout(function() {
+                let wing;
+                if (frontback === "front") {
+                    wing = lrwing === "left" ? _(".rwing") : _(".lwing");
+                } else {
+                    wing = lrwing === "left" ? _(".rwingb") : _(".lwingb");
+                }
+                const e1 = document.getElementsByClassName("casting")[0];
+                e1.style.display = "block";
+                const e2 = e1.getElementsByClassName("castingtext")[0];
+                e2.innerHTML = "Hallowed Wings";
+                const e3 = e1.getElementsByClassName("castingfill")[0];
+                e3.style.animationName = "casting";
+                e3.style.animationDuration = "5s";
+                e3.style.animationTimingFunction = "linear";
+                wing.style.animationName = "wingflicker";
+                const e4 = document.getElementsByClassName("casting")[1];
+                e4.style.display = "none";
+                hit(mirrorstate, frontback, lrwing, 2);
+            }, 22500);
+            // second Reflected Hallowed Wings hit
+            // second Hallowed Wings hit
+            setTimeout(function() {
+                _(".lwing").style.animationName = "";
+                _(".rwing").style.animationName = "";
+                _(".lwingb").style.animationName = "";
+                _(".rwingb").style.animationName = "";
+                const e1 = document.getElementsByClassName("casting")[0];
+                e1.style.display = "none";
+                const e2 = document.getElementsByClassName("casting")[2];
+                e2.style.display = "none";
+                hit(mirrorstate, frontback, lrwing, 3);
+            }, 27500);
+            setTimeout(function() {
+                timeouts = [];
+                document.getElementsByClassName("startbtn")[0].style.backgroundImage = "url('./images/play.svg')";
+                live = false;
+            }, 28000);
+        }
+
+        function play_shivacasting_live()
         {
-            if ((lrwing == "right" && mirrorstate == "B" && frontback == "front") || (lrwing == "right" && mirrorstate == "A" && frontback == "back"))
-                success();
-            else
-                failed();
-        });
-        document.querySelector(".answer4").addEventListener("click", function()
-        {
-            if ((lrwing == "left" && mirrorstate == "A" && frontback == "front") || (lrwing == "left" && mirrorstate == "B" && frontback == "back"))
-                success();
-            else
-                failed();
-        });
-        shivacasting();
+            if (live) {
+                window.location.reload()
+            } else {
+                shivacasting_live();
+            }
+        }
+
+        // document.querySelector(".answer1").addEventListener("click", function()
+        // {
+        //     if ((lrwing == "right" && mirrorstate == "A" && frontback == "front") || (lrwing == "right" && mirrorstate == "B" && frontback == "back"))
+        //         success();
+        //     else
+        //         failed();
+        // });
+        // document.querySelector(".answer2").addEventListener("click", function()
+        // {
+        //     if ((lrwing == "left" && mirrorstate == "B" && frontback == "front") || (lrwing == "left" && mirrorstate == "A" && frontback == "back"))
+        //         success();
+        //     else
+        //         failed();
+        // });
+        // document.querySelector(".answer3").addEventListener("click", function()
+        // {
+        //     if ((lrwing == "right" && mirrorstate == "B" && frontback == "front") || (lrwing == "right" && mirrorstate == "A" && frontback == "back"))
+        //         success();
+        //     else
+        //         failed();
+        // });
+        // document.querySelector(".answer4").addEventListener("click", function()
+        // {
+        //     if ((lrwing == "left" && mirrorstate == "A" && frontback == "front") || (lrwing == "left" && mirrorstate == "B" && frontback == "back"))
+        //         success();
+        //     else
+        //         failed();
+        // });
     </script>
     <!-- image and code by Arcturs@Ramuh // mp3, ogg src copyright by SQUARE ENIX co., ltd -->
 </html>
